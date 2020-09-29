@@ -1,0 +1,67 @@
+version: '3'
+
+services:
+
+  jupyterhub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JUPYTERHUB_VERSION: ${JUPYTERHUB_VERSION}
+    image: inidun_jupyterhub
+    #container_name: inidun_hub
+    restart: on-failure
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:rw"
+      - "jupyterhub_data:${DATA_VOLUME_CONTAINER}"
+      - "/etc/shadow:/etc/shadow"
+      - "/etc/passwd:/etc/passwd"
+      - "/etc/pam.d:/etc/pam.d"
+      #- ./cull_idle_servers.py:/srv/jupyterhub/cull_idle_servers.py
+    environment:
+      DOCKER_JUPYTER_CONTAINER: inidun_lab
+      HUB_IP: inidun_hub
+      # All containers will join this network
+      DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}
+      # JupyterHub will spawn this Notebook image for users
+      # DOCKER_NOTEBOOK_IMAGE: ${LOCAL_NOTEBOOK_IMAGE}
+      # Notebook directory inside user image
+      # DOCKER_NOTEBOOK_DIR: ${DOCKER_NOTEBOOK_DIR}
+      # Using this run command (optional)
+      # DOCKER_SPAWN_CMD: ${DOCKER_SPAWN_CMD}
+    env_file:
+      - ./secrets/.env.oauth2
+      - ./.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:${FRONTEND_HOST}"
+      - "traefik.docker.network=${DOCKER_NETWORK_NAME}"
+    command: >
+        jupyterhub -f /srv/jupyterhub/jupyterhub_config.py
+    # networks:
+    #   - ${DOCKER_NETWORK_NAME}
+
+  reverse-proxy:
+    image: traefik:1.7
+    #container_name: reverse-proxy
+    ports:
+      - "3004:80"
+      - "3005:443"
+      - "3006:8080"
+    volumes:
+      - ./acme.json:/acme.json
+      - ./traefik.toml:/etc/traefik/traefik.toml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - --acme.storage=/acme.json
+    restart: on-failure
+
+volumes:
+    jupyterhub_data:
+        external:
+          name: "${DATA_VOLUME_HOST}"
+
+networks:
+    default:
+      external:
+        name: ${DOCKER_NETWORK_NAME}
