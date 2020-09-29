@@ -66,6 +66,7 @@ bash_lab:
 
 clear_volumes:
 	-docker volume rm `docker volume ls -q | grep jupyterhub-user` >/dev/null 2>&1
+	-docker volume rm inidun_hub_data >/dev/null 2>&1
 
 clean: down
 	-docker rm `docker ps -f "ancestor=inidun_lab" -q --all` >/dev/null 2>&1

@@ -13,7 +13,7 @@ services:
     restart: on-failure
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
-      - "jupyterhub_data:${DATA_VOLUME_CONTAINER}"
+      - "inidun_hub_data:${DATA_VOLUME_CONTAINER}"
       - "/etc/shadow:/etc/shadow"
       - "/etc/passwd:/etc/passwd"
       - "/etc/pam.d:/etc/pam.d"
@@ -57,7 +57,7 @@ services:
     restart: on-failure
 
 volumes:
-    jupyterhub_data:
+    inidun_hub_data:
         external:
           name: "${DATA_VOLUME_HOST}"
 

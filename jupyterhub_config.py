@@ -1,12 +1,12 @@
 # JupyterHub configuration
 #
-## If you update this file, do not forget to delete the `jupyterhub_data` volume before restarting the jupyterhub service:
+## If you update this file, do not forget to delete the `inidun_hub_data` volume before restarting the jupyterhub service:
 ##
-##     docker volume rm jupyterhub_jupyterhub_data
+##     docker volume rm inidun_hub_data
 ##
 ## or, if you changed the COMPOSE_PROJECT_NAME to <name>:
 ##
-##    docker volume rm <name>_jupyterhub_data
+##    docker volume rm <name>_inidun_hub_data
 ##
 
 import os
