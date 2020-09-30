@@ -9,7 +9,9 @@ services:
       args:
         JUPYTERHUB_VERSION: ${JUPYTERHUB_VERSION}
     image: inidun_jupyterhub
-    #container_name: inidun_hub
+    ports:
+      - "3004:8000"
+    container_name: inidun_hub
     restart: on-failure
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
@@ -41,20 +43,20 @@ services:
     # networks:
     #   - ${DOCKER_NETWORK_NAME}
 
-  reverse-proxy:
-    image: traefik:1.7
-    #container_name: reverse-proxy
-    ports:
-      - "3004:80"
-      - "3005:443"
-      - "3006:8080"
-    volumes:
-      - ./acme.json:/acme.json
-      - ./traefik.toml:/etc/traefik/traefik.toml
-      - /var/run/docker.sock:/var/run/docker.sock
-    command:
-      - --acme.storage=/acme.json
-    restart: on-failure
+  #reverse-proxy:
+  #  image: traefik:1.7
+  #  #container_name: reverse-proxy
+  #  ports:
+  #    - "3004:80"
+  #    - "3005:443"
+  #    - "3006:8080"
+  #  volumes:
+  #    - ./acme.json:/acme.json
+  #    - ./traefik.toml:/etc/traefik/traefik.toml
+  #    - /var/run/docker.sock:/var/run/docker.sock
+  #  command:
+  #    - --acme.storage=/acme.json
+  #  restart: on-failure
 
 volumes:
     inidun_hub_data:

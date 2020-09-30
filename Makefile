@@ -14,30 +14,13 @@ rebuild: down clear_volumes build up
 
 network:
 	@docker network inspect $(DOCKER_NETWORK_NAME) >/dev/null 2>&1 || docker network create $(DOCKER_NETWORK_NAME)
-    # docker network create --driver overlay $(DOCKER_NETWORK_NAME)
 
 volumes:
 	@docker volume inspect $(DATA_VOLUME_HOST) >/dev/null 2>&1 || docker volume create --name $(DATA_VOLUME_HOST)
-	# @docker volume inspect $(DB_VOLUME_HOST) >/dev/null 2>&1 || docker volume create --name $(DB_VOLUME_HOST)
-
-# self-signed-cert:
-# 	# make a self-signed cert
-
-# secrets/postgres.env:
-# 	@echo "Generating postgres password in $@"
-# 	@echo "POSTGRES_PASSWORD=$(shell openssl rand -hex 32)" > $@
 
 secrets/.env.oauth2:
 	@echo "File .env.oauth2 file is missing (GitHub parameters)"
 	@exit 1
-
-# secrets/jupyterhub.crt:
-# 	@echo "Need an SSL certificate in secrets/jupyterhub.crt"
-# 	@exit 1
-
-# secrets/jupyterhub.key:
-# 	@echo "Need an SSL key in secrets/jupyterhub.key"
-# 	@exit 1
 
 userlist:
 	@echo "Add usernames, one per line, to ./userlist, such as:"
@@ -45,7 +28,7 @@ userlist:
 	@echo "    wash"
 	@exit 1
 
-check-files: config/userlist secrets/.env.oauth2 # $(cert_files) secrets/postgres.env
+check-files: config/userlist secrets/.env.oauth2 requirements.txt # $(cert_files) secrets/postgres.env
 
 pull:
 	docker pull $(DOCKER_NOTEBOOK_IMAGE)
@@ -59,7 +42,7 @@ notebook_image:
 	docker build -t $(LOCAL_NOTEBOOK_IMAGE):latest -f inidun_lab/Dockerfile inidun_lab
 
 bash:
-	@docker exec -it -t inidun_hub /bin/bash
+	@docker exec -it -t inidun_hub_jupyterhub_1 /bin/bash
 
 bash_lab:
 	@docker exec -it -t `docker ps -f "ancestor=inidun_lab" -q --all | head -1` /bin/bash
@@ -92,10 +75,10 @@ nuke:
 	-docker rm -fv `docker ps --all -q`
 	-docker images -q --filter "dangling=true" | xargs docker rmi
 
-# TODO: Fix cd to project root, then back again
 requirements.txt:
-	@echo "	$(CURDIR)"
-	@jq -r '.default | to_entries[] | .key + .value.version' ../text_analytics/Pipfile.lock > requirements.txt
-	@mv -f requirements.txt ./inidun_lab
+	@wget -qO Pipfile.lock  https://raw.githubusercontent.com/inidun/text_analytics/master/Pipfile.lock
+	@jq -r '.default | to_entries[] | .key + .value.version' Pipfile.lock > requirements.txt
+	@if ! cmp -s ./requirements.txt inidun_lab/requirements.txt ; then \cp -f ./requirements.txt inidun_lab/requirements.txt; fi
+	@rm -f requirements.txt Pipfile.lock
 
 .PHONY: bash clear_volumes clean down up follow build restart pull nuke network userlist requirements.txt

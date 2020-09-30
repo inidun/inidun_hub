@@ -79,6 +79,7 @@ c.DockerSpawner.use_internal_ip = True
 c.DockerSpawner.network_name = network_name
 c.DockerSpawner.notebook_dir = '/home/jovyan/work' # notebook_dir
 #c.DockerSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
+
 c.DockerSpawner.volumes = {
     'jupyterhub-user-{username}':'/home/jovyan/work',
     '/data/inidun': {               # path on host
@@ -88,6 +89,9 @@ c.DockerSpawner.volumes = {
 }
 c.DockerSpawner.remove_containers = True                                    # Remove containers once they are stopped
 c.DockerSpawner.host_ip = "0.0.0.0"
+
+#This line added by JvB since the containers spawned by jupyterhub will conflict with each other unless you give them a per-jupyter-installation unique name
+c.DockerSpawner.name_template = "jupyterhub-inidun-{username}"
 
 # c.DockerSpawner.links={network_name: network_name}
 
