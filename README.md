@@ -35,7 +35,7 @@ Other changes you may like to make:
 - Edit [`jupyterlab/Dockerfile`](jupyterlab/Dockerfile) to include the software you like.
 - Change [`jupyterhub/jupyterhub_config.py`](jupyterhub/jupyterhub_config.py) accordingly, in particular the *"user data persistence"* section.
 
-If the `jupyerhub_config.py` is changed, then the `inidun_hub_data` data volume must be removed in order for the changes to take effect.
+If the `jupyerhub_config.py` is changed, then the `$(DATA_VOLUME_HOST)` data volume must be removed in order for the changes to take effect.
 
 ```bash
 make down
