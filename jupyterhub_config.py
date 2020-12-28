@@ -81,7 +81,7 @@ c.DockerSpawner.notebook_dir = '/home/jovyan/work' # notebook_dir
 #c.DockerSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
 
 c.DockerSpawner.volumes = {
-    'jupyterhub-user-{username}':'/home/jovyan/work',
+    'jupyterhub-inidun-user-{username}':'/home/jovyan/work',
     '/data/inidun': {               # path on host
         "bind": '/data/inidun',     # path in docker instance
         "mode": "ro"
