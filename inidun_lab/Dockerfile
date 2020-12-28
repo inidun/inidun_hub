@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.8.5-slim-buster
 
 # Notice: part of this code is from jupyter project
 LABEL MAINTAINER Roger Mähler <roger dot mahler at umu dot se>
@@ -73,54 +73,45 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/
 
 RUN chmod +x /usr/local/bin/tini
 
-COPY requirements.txt .
-
 RUN python --version \
     && pip install --upgrade pip \
-    && pip install -r requirements.txt \
-    && pip install --upgrade jupyterhub==1.0.0 \
-    && exit 0
+    && pip install jupyterhub==1.0.0
 
-# RUN beakerx install
-RUN jupyter labextension install \
-         @jupyter-widgets/jupyterlab-manager \
-         jupyter-matplotlib \
-         @bokeh/jupyter_bokeh
+ADD https://raw.githubusercontent.com/inidun/text_analytics/master/requirements.txt requirements.txt
 
-        #  @jupyterlab/toc \
-        #  beakerx-jupyterlab \
-        #  jupyter-cytoscape@1.0.3 \
-        #  qgrid2
+RUN pip install -r requirements.txt \
+    && pip install humlab-westac \
+    && jupyter labextension install \
+        @jupyter-widgets/jupyterlab-manager \
+        jupyter-matplotlib \
+        @bokeh/jupyter_bokeh \
+		@jupyter-widgets/jupyterlab-sidecar \
+        ipyaggrid \
+        qgrid2 \
+        jupyterlab-jupytext
 
-
-# Install R https://cran.r-project.org/bin/linux/debian/
-
-#RUN jupyter labextension install --minimize=False jupyter-cytoscape
-
-# RUN python -m nltk.downloader -d /usr/local/share/nltk_data stopwords punkt sentiwordnet \
-#     \
-#     && python -m spacy download en_core_web_sm \
-#     && python -m spacy download fr_core_news_sm \
-#     && python -m spacy download en_core_web_md \
-#     && exit 0
+RUN \
+    python -m nltk.downloader -d /usr/local/share/nltk_data stopwords punkt sentiwordnet \
+    \
+    && pip install spacy-lookups-data \
+    && python -m spacy download en_core_web_sm \
+    && python -m spacy download en_core_web_md \
+    && python -m spacy link en_core_web_sm en --force \
+    && mkdir -p /data
 
 ENV NLTK_DATA=/usr/local/share/nltk_data
-
-# EXPOSE ${NB_PORT}
 
 ENTRYPOINT ["tini", "-g", "--"]
 
 RUN adduser $NB_USER --uid $NB_UID --gid $NB_GID --disabled-password --gecos '' --shell /bin/bash \
     && adduser $NB_USER sudo \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-# RUN useradd -m $NB_USER
 
 ENV HOME=/home/$NB_USER
 USER $NB_USER
 WORKDIR $HOME
 
 RUN mkdir -p $HOME/work
-# $HOME/bin $HOME/.jupyter/lab
 
 WORKDIR $HOME/work
 
@@ -128,10 +119,9 @@ ADD https://api.github.com/repos/inidun/text_analytics/git/refs/heads/master ver
 
 RUN git clone https://github.com/inidun/text_analytics.git \
     && cd text_analytics \
-    && rm -rf .git* .docker* .travis* Pipfile* archive docker pytest* run* inidun_hub Makefile requirements.txt setup.py NOTE.md
+    && rm -rf tests scripts .git* .devcontainer .flake* .pre* .pylint* .travis* .isort* poetry* pyproject* pyright* pytest* Makefile requirements.txt NOTE*.md README*.md
 
-#COPY user-settings  $HOME/.jupyter/lab/
-#COPY jupyter_notebook_config.py $HOME/.jupyter/
+COPY --chown=$NB_USER:users data $HOME/work/text_analytics/data
 
 CMD ["jupyterhub-singleuser"]
 
