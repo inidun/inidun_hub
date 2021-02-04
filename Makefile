@@ -5,7 +5,7 @@ include .env
 
 .DEFAULT_GOAL=build
 
-build: check-files network volumes notebook_image
+build: check-files network volumes lab_image
 	docker-compose build
 
 rebuild: down clear_volumes build up
@@ -30,12 +30,9 @@ userlist:
 
 check-files: config/userlist secrets/.env.oauth2
 
-pull:
-	docker pull $(DOCKER_NOTEBOOK_IMAGE)
-
-notebook_image:
-	@echo "Building image using penelope v$(PENELOPE_VERSION)"
-	docker build --build-arg PENELOPE_VERSION=$(PENELOPE_VERSION) -t $(LOCAL_NOTEBOOK_IMAGE):latest -f $(LOCAL_NOTEBOOK_IMAGE)/Dockerfile $(LOCAL_NOTEBOOK_IMAGE)
+lab_image:
+	@echo "Building lab image"
+	docker build --build-arg PACKAGE_VERSION=$(PACKAGE_VERSION) -t $(LOCAL_NOTEBOOK_IMAGE):$(LAB_BUILD_VERSION) -f $(LOCAL_NOTEBOOK_IMAGE)/Dockerfile $(LOCAL_NOTEBOOK_IMAGE)
 
 bash:
 	@docker exec -it -t $(HUB_CONTAINER_NAME) /bin/bash
@@ -61,7 +58,7 @@ follow:
 	@docker logs $(LOCAL_NOTEBOOK_IMAGE) --follow
 
 follow_lab:
-	@echo docker logs `docker ps -f "ancestor=$(LOCAL_NOTEBOOK_IMAGE)" -q --all | head -1` --follow
+	@docker logs `docker ps -f "ancestor=$(LOCAL_NOTEBOOK_IMAGE)" -q --all | head -1` --follow
 
 restart: down up follow
 
