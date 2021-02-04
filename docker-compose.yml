@@ -8,10 +8,10 @@ services:
       dockerfile: Dockerfile
       args:
         JUPYTERHUB_VERSION: ${JUPYTERHUB_VERSION}
-    image: inidun_jupyterhub
+    image: ${JUPYTERHUB_IMAGE_NAME}
     ports:
       - "3004:8000"
-    container_name: inidun_hub
+    container_name: ${HUB_CONTAINER_NAME}
     restart: on-failure
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
@@ -22,8 +22,8 @@ services:
       - "/etc/pam.d:/etc/pam.d"
       #- ./cull_idle_servers.py:/srv/jupyterhub/cull_idle_servers.py
     environment:
-      DOCKER_JUPYTER_CONTAINER: inidun_lab
-      HUB_IP: inidun_hub
+      DOCKER_JUPYTER_CONTAINER: ${LOCAL_NOTEBOOK_IMAGE}
+      HUB_IP: ${HUB_CONTAINER_NAME}
       # All containers will join this network
       DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}
       # JupyterHub will spawn this Notebook image for users
