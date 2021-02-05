@@ -32,7 +32,12 @@ check-files: config/userlist secrets/.env.oauth2
 
 lab_image:
 	@echo "Building lab image"
-	docker build --build-arg PACKAGE_VERSION=$(PACKAGE_VERSION) -t $(LOCAL_NOTEBOOK_IMAGE):$(LAB_BUILD_VERSION) -f $(LOCAL_NOTEBOOK_IMAGE)/Dockerfile $(LOCAL_NOTEBOOK_IMAGE)
+	docker build \
+		--build-arg PYPI_PACKAGE=$(PYPI_PACKAGE) \
+		--build-arg PYPI_PACKAGE_VERSION=$(PYPI_PACKAGE_VERSION) \
+		--build-arg GITHUB_ORG=$(GITHUB_ORG) \
+		--build-arg GITHUB_REPOSITORY=$(GITHUB_REPOSITORY) \
+		-t $(LOCAL_NOTEBOOK_IMAGE):$(LAB_BUILD_VERSION) -f $(LOCAL_NOTEBOOK_IMAGE)/Dockerfile $(LOCAL_NOTEBOOK_IMAGE)
 
 bash:
 	@docker exec -it -t $(HUB_CONTAINER_NAME) /bin/bash
