@@ -20,18 +20,10 @@ services:
       - "/etc/shadow:/etc/shadow"
       - "/etc/passwd:/etc/passwd"
       - "/etc/pam.d:/etc/pam.d"
-      #- ./cull_idle_servers.py:/srv/jupyterhub/cull_idle_servers.py
     environment:
       DOCKER_JUPYTER_CONTAINER: ${LOCAL_NOTEBOOK_IMAGE}
       HUB_IP: ${HUB_CONTAINER_NAME}
-      # All containers will join this network
       DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}
-      # JupyterHub will spawn this Notebook image for users
-      # DOCKER_NOTEBOOK_IMAGE: ${LOCAL_NOTEBOOK_IMAGE}
-      # Notebook directory inside user image
-      # DOCKER_NOTEBOOK_DIR: ${DOCKER_NOTEBOOK_DIR}
-      # Using this run command (optional)
-      # DOCKER_SPAWN_CMD: ${DOCKER_SPAWN_CMD}
     env_file:
       - ./secrets/.env.oauth2
       - ./.env
@@ -41,9 +33,6 @@ services:
       - "traefik.docker.network=${DOCKER_NETWORK_NAME}"
     command: >
         jupyterhub -f /srv/jupyterhub/jupyterhub_config.py
-    # networks:
-    #   - ${DOCKER_NETWORK_NAME}
-
 
 volumes:
     inidun_hub_data:
