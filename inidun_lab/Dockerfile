@@ -1,136 +1,106 @@
-FROM python:3.8.5-slim-buster
+FROM ubuntu:focal-20210416
 
 # Notice: part of this code is from jupyter project
 LABEL MAINTAINER Roger Mähler <roger dot mahler at umu dot se>
 
-ARG NB_USER="jovyan"
-ARG NB_UID="1000"
-ARG NB_GID="100"
-ARG NB_PORT=8888
-
 ARG TINI_VERSION=v0.18.0
-ARG JUPYTERHUB_VERSION=1.0.0
-ARG JAVA_URL=https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u242-b08_openj9-0.18.1/OpenJDK8U-jre_x64_linux_openj9_8u242b08_openj9-0.18.1.tar.gz
 
-ARG GITHUB_ORG=inidun
-ARG GITHUB_REPOSITORY=text_analytics
-ARG PYPI_PACKAGE=humlab-inidun
-
-ENV NB_PORT=${NB_PORT} \
-    \
-    NB_USER=$NB_USER \
-    NB_UID=$NB_UID \
-    NB_GID=$NB_GID \
-    \
-    SHELL=/bin/bash \
-    DEBIAN_FRONTEND=noninteractive
+ENV SHELL=/bin/bash
+ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
 
 RUN set -ex; \
     \
-    apt-get update -qq && apt-get -y -qq dist-upgrade \
+    apt-get update -qq && apt-get -y -qq dist-upgrade > /dev/null \
     \
     && mkdir -p /usr/share/man/man1 \
-    && apt-get install -y -qq --no-install-recommends \
-        locales \
-        build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev  \
-        software-properties-common \
-        wget curl zip unzip bzip2 llvm libncurses5-dev \
-        git vim \
-        ca-certificates \
-        netbase netcat \
-        sudo \
-        fonts-liberation \
-        \
-        r-base r-base-dev libopenblas-base \
-    \
-    && curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash \
-    && curl -sL https://deb.nodesource.com/setup_12.x | bash - \
-    && apt-get install -y -qq nodejs \
+    && apt-get install -y -qq --no-install-recommends apt-utils \
+        sudo locales software-properties-common \
+        build-essential \
+        wget curl zip unzip bzip2 llvm git vim gnupg \
+        libssl-dev libopenblas-base zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev  \
+        libncurses5-dev ca-certificates netbase netcat \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-pycurl \
+        python3-venv \
+        nodejs npm yarn \
+        fonts-liberation > /dev/null \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /usr/lib/jvm \
-    && cd /usr/lib/jvm \
-    && wget $JAVA_URL -O OpenJDK8U-jre_x64_linux.tar.gz \
-    && tar xvf OpenJDK8U-jre_x64_linux.tar.gz \
-    && rm -f OpenJDK8U-jre_x64_linux.tar.gz \
-    && ln -s /usr/lib/jvm/jdk8u242-b08-jre/bin/java /usr/local/bin/java
-
-ENV PATH=/usr/local/bin:$PATH
-ENV JAVA_HOME=/usr/lib/jvm/jdk8u242-b08-jre
-
-WORKDIR /tmp
-
-RUN npm install npm@latest -g \
-    \
-    && npm install -g n \
-    && npm cache clean -f \
-    && npm config set progress false \
-    && npm config set registry http://registry.npmjs.org/ \
-    && npm i -g zeromq --unsafe-perm \
-    && npm install -g node-gyp \
-    \
+    && npm install n -g \
     && n stable
+
+RUN python3.8 -m venv /venv
+
+ENV PATH="/venv/bin:/usr/local/bin:$PATH"
+RUN echo "export PATH=${PATH}" >> /root/.bashrc
 
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/local/bin/tini
 
 RUN chmod +x /usr/local/bin/tini
 
+ARG JUPYTERHUB_VERSION
+
 RUN python --version \
-    && pip install --upgrade pip \
-    && pip install jupyterhub==1.0.0
+    && pip install --quiet --upgrade pip \
+    && pip install --quiet jupyterhub==${JUPYTERHUB_VERSION}
 
-ADD https://raw.githubusercontent.com/${GITHUB_ORG}/${GITHUB_REPOSITORY}/master/requirements.txt requirements.txt
-
+ARG PYPI_PACKAGE
 ARG PYPI_PACKAGE_VERSION
 
-RUN pip install -r requirements.txt \
-    && pip install ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION}
+RUN pip install --quiet ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION}
 
 RUN \
     python -m nltk.downloader -d /usr/local/share/nltk_data stopwords punkt sentiwordnet \
     \
-    && pip install spacy-lookups-data \
+    && pip install --quiet spacy-lookups-data \
     && python -m spacy download en_core_web_sm \
     && python -m spacy download en_core_web_md \
     && python -m spacy link en_core_web_sm en --force \
     && mkdir -p /data
 
 RUN jupyter labextension install \
-        @jupyter-widgets/jupyterlab-manager@2 \
-        jupyter-matplotlib@0.7.4 \
-        @bokeh/jupyter_bokeh \
         ipyaggrid \
-        qgrid2
+        @finos/perspective-jupyterlab \
+        @jupyter-widgets/jupyterlab-manager
 
 ENV NLTK_DATA=/usr/local/share/nltk_data
 
 ENTRYPOINT ["tini", "-g", "--"]
 
-RUN adduser $NB_USER --uid $NB_UID --gid $NB_GID --disabled-password --gecos '' --shell /bin/bash \
-    && adduser $NB_USER sudo \
+
+ARG LAB_UID="201"
+ARG LAB_GID="2001"
+ARG LAB_USER="jovyan"
+
+RUN addgroup --gid $LAB_GID "${LAB_USER}s"  \
+    && adduser $LAB_USER --uid $LAB_UID --gid $LAB_GID --disabled-password --gecos '' --shell /bin/bash \
+    && adduser $LAB_USER sudo \
     && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-ENV HOME=/home/$NB_USER
-USER $NB_USER
+RUN  npm cache clean --force \
+    && jupyter lab clean \
+    && pip cache purge
+
+ENV HOME=/home/$LAB_USER
+USER $LAB_USER
 WORKDIR $HOME
 
 RUN mkdir -p $HOME/work
 
 WORKDIR $HOME/work
 
-ADD https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPOSITORY}/git/refs/heads/master version.json
+COPY --chown=$LAB_USER:users update.sh $HOME/work/update.sh
+COPY --chown=$LAB_USER:users data $HOME/work/data
 
-RUN git clone https://github.com/${GITHUB_ORG}/${GITHUB_REPOSITORY}.git \
-    && cd ${GITHUB_REPOSITORY} \
-    && rm -rf tests scripts .git* .devcontainer* .flake* .pre* .pylint* .travis* .isort* .docker* \
-        *oetry* pyproject* pyright* pytest* run* \
-        Makefile requirements.txt NOTE*.md README*.md setup.py
+ARG GITHUB_REPOSITORY_URL
 
-COPY --chown=$NB_USER:users data $HOME/work/${GITHUB_REPOSITORY}/data
-#COPY user-settings  $HOME/.jupyter/lab/
-#COPY jupyter_notebook_config.py $HOME/.jupyter/
+RUN chmod +x $HOME/work/update.sh \
+    && $HOME/work/update.sh -r ${GITHUB_REPOSITORY_URL} notebooks resources __paths__.py
 
 CMD ["jupyterhub-singleuser"]
+# CMD jupyter lab --ip=* --port=${LAB_PORT} --no-browser --allow-root

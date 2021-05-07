@@ -3,43 +3,38 @@ version: '3'
 services:
 
   jupyterhub:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        JUPYTERHUB_VERSION: ${JUPYTERHUB_VERSION}
-    image: ${JUPYTERHUB_IMAGE_NAME}
+    image: ${HUB_IMAGE_NAME}:latest
     ports:
       - "3004:8000"
-    container_name: ${HUB_CONTAINER_NAME}
+    container_name: ${HUB_IMAGE_NAME}
     restart: on-failure
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
-      - "inidun_hub_data:${DATA_VOLUME_CONTAINER}"
-      - ${HOST_CONFIG_FOLDER}:/etc/jupyterhub
+      - "inidun_hub_data:${HUB_HOST_VOLUME_FOLDER}"
+      - ${HUB_HOST_CONFIG_FOLDER}:${HUB_CONFIG_FOLDER}
       - "/etc/shadow:/etc/shadow"
       - "/etc/passwd:/etc/passwd"
       - "/etc/pam.d:/etc/pam.d"
     environment:
-      DOCKER_JUPYTER_CONTAINER: ${LOCAL_NOTEBOOK_IMAGE}
-      HUB_IP: ${HUB_CONTAINER_NAME}
-      DOCKER_NETWORK_NAME: ${DOCKER_NETWORK_NAME}
+      DOCKER_JUPYTER_CONTAINER: ${LAB_IMAGE_NAME}
+      HUB_IP: ${HUB_IMAGE_NAME}
+      HUB_NETWORK_NAME: ${HUB_NETWORK_NAME}
     env_file:
       - ./secrets/.env.oauth2
       - ./.env
     labels:
       - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:${FRONTEND_HOST}"
-      - "traefik.docker.network=${DOCKER_NETWORK_NAME}"
+      - "traefik.frontend.rule=Host:${PROJECT_NAME}.humlab.umu.se"
+      - "traefik.docker.network=${HUB_NETWORK_NAME}"
     command: >
-        jupyterhub -f /srv/jupyterhub/jupyterhub_config.py
+        jupyterhub -f ${HUB_CONFIG_FOLDER}/jupyterhub_config.py
 
 volumes:
     inidun_hub_data:
         external:
-          name: "${DATA_VOLUME_HOST}"
+          name: "${HUB_HOST_VOLUME_NAME}"
 
 networks:
     default:
       external:
-        name: ${DOCKER_NETWORK_NAME}
+        name: ${HUB_NETWORK_NAME}

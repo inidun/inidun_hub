@@ -5,18 +5,26 @@ include .env
 
 .DEFAULT_GOAL=build
 
-build: check-files network volumes lab_image
-	docker-compose build
+build: check-files network host-volume lab-image hub-image
+	@sudo addgroup --gid $(LAB_GID) "$(PROJECT_NAME)s"
+	@sudo adduser $(PROJECT_NAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
+	@echo "Build done"
 
-rebuild: down clear_volumes build up
+rebuild: down clear-user-volumes build jupyterhub-config up
 	@echo "Rebuild done"
 	@exit 0
 
-network:
-	@docker network inspect $(DOCKER_NETWORK_NAME) >/dev/null 2>&1 || docker network create $(DOCKER_NETWORK_NAME)
+jupyterhub-config:
+	@echo "Copying jupyterhub_config.py to /etc/jupyterhub/jupyterhub_config.py"
+	@sudo cp -f jupyterhub_config.py /etc/jupyterhub/jupyterhub_config.py
+	# @echo "info: remember to clear host volume if jupyterhub_config.py has been changed!"
+	# @docker volume rm $(HUB_HOST_VOLUME_NAME)
 
-volumes:
-	@docker volume inspect $(DATA_VOLUME_HOST) >/dev/null 2>&1 || docker volume create --name $(DATA_VOLUME_HOST)
+network:
+	@docker network inspect $(HUB_NETWORK_NAME) >/dev/null 2>&1 || docker network create $(HUB_NETWORK_NAME)
+
+host-volume:
+	@docker volume inspect $(HUB_HOST_VOLUME_NAME) >/dev/null 2>&1 || docker volume create --name $(HUB_HOST_VOLUME_NAME)
 
 secrets/.env.oauth2:
 	@echo "File .env.oauth2 file is missing (GitHub parameters)"
@@ -30,28 +38,76 @@ userlist:
 
 check-files: config/userlist secrets/.env.oauth2
 
-lab_image:
+# hub-image:
+# 	@docker-compose build
+# 	@docker tag $(HUB_IMAGE_NAME):latest $(HUB_IMAGE_NAME):$(PYPI_PACKAGE_VERSION)
+
+lab-image:
 	@echo "Building lab image"
 	docker build \
 		--build-arg PYPI_PACKAGE=$(PYPI_PACKAGE) \
 		--build-arg PYPI_PACKAGE_VERSION=$(PYPI_PACKAGE_VERSION) \
-		--build-arg GITHUB_ORG=$(GITHUB_ORG) \
-		--build-arg GITHUB_REPOSITORY=$(GITHUB_REPOSITORY) \
-		-t $(LOCAL_NOTEBOOK_IMAGE):$(LAB_BUILD_VERSION) -f $(LOCAL_NOTEBOOK_IMAGE)/Dockerfile $(LOCAL_NOTEBOOK_IMAGE)
+		--build-arg GITHUB_REPOSITORY_URL=$(GITHUB_REPOSITORY_URL) \
+		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
+		--build-arg LAB_UID=$(LAB_UID) \
+		--build-arg LAB_GID=$(LAB_GID) \
+		-t $(LAB_IMAGE_NAME):latest \
+		-t $(LAB_IMAGE_NAME):$(PYPI_PACKAGE_VERSION) \
+		-f $(LAB_IMAGE_NAME)/Dockerfile $(LAB_IMAGE_NAME)
 
-bash:
-	@docker exec -it -t $(HUB_CONTAINER_NAME) /bin/bash
+hub-image:
+	@echo "Building hub image"
+	docker build \
+		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
+		-t $(HUB_IMAGE_NAME):latest \
+		-t $(HUB_IMAGE_NAME):$(PYPI_PACKAGE_VERSION) \
+		-f ./Dockerfile .
 
-bash_lab:
-	@docker exec -it -t `docker ps -f "ancestor=$(LOCAL_NOTEBOOK_IMAGE)" -q --all | head -1` /bin/bash
+run-lab-image:
+	@echo "Building lab image"
+	@docker build \
+		--build-arg PYPI_PACKAGE=$(PYPI_PACKAGE) \
+		--build-arg PYPI_PACKAGE_VERSION=$(PYPI_PACKAGE_VERSION) \
+		--build-arg GITHUB_REPOSITORY_URL=$(GITHUB_REPOSITORY_URL) \
+		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
+		--build-arg LAB_PORT=8889 \
+		-t $(LAB_IMAGE_NAME):8889 \
+		-f $(LAB_IMAGE_NAME)/Dockerfile $(LAB_IMAGE_NAME)
+	@docker run --rm -p 8889:8889 --mount "type=bind,source=/data,target=/data" $(LAB_IMAGE_NAME):8889
 
-clear_volumes:
-	-echo docker volume rm `docker volume ls -q | grep 'jupyterhub-inidun'`
+bash-exec-hub:
+	@docker exec -it -t `docker ps -f "ancestor=$(HUB_IMAGE_NAME)" -q --all | head -1` /bin/bash
+
+bash-exec-lab:
+	@docker exec -it -t `docker ps -f "ancestor=$(LAB_IMAGE_NAME)" -q --all | head -1` /bin/bash
+
+bash-run-hub:
+	@docker run --rm -it $(HUB_IMAGE_NAME) /bin/bash
+
+bash-run-lab:
+	@docker run --rm -it $(LAB_IMAGE_NAME):latest /bin/bash
+
+USER_VOLUMES=$(shell docker volume ls -q | grep -E 'jupyterhub-$(PROJECT_NAME)')
+USER_VOLUMES_BACKUP_NAME="jupyterhub-$(PROJECT_NAME)-user-volumes-"`date '+%Y%m%d-%H%M'`.tar.gz
+
+.ONESHELL:
+clear-user-volumes: backup-user-volumes
+	@if [ "$(USER_VOLUMES)" != "" ]; then \
+		echo "Removing user volumes: $(USER_VOLUMES)" ; \
+		docker volume rm $(USER_VOLUMES) ; \
+	fi
+
+.ONESHELL:
+backup-user-volumes:
+	@echo "Backing up to $(USER_VOLUMES_BACKUP_NAME)"
+	@mkdir -p ~/backup/docker-volumes/
+	@sudo find /var/lib/docker/volumes -maxdepth 1 -mindepth 1 -name "*$(PROJECT_NAME)*" -not -type l -print | \
+		sudo tar -czvf ~/backup/docker-volumes/$(USER_VOLUMES_BACKUP_NAME) --files-from=- >/dev/null 2>&1
 
 clean: down
-	-docker rm `docker ps -f "ancestor=$(LOCAL_NOTEBOOK_IMAGE)" -q --all` >/dev/null 2>&1
-	-docker rm `docker ps -f "ancestor=inidun_jupyterhub" -q --all` >/dev/null 2>&1
-	@docker volume rm `docker volume ls -q`
+	-docker rm `docker ps -f "ancestor=$(LAB_IMAGE_NAME)" -q --all` >/dev/null 2>&1
+	-docker rm `docker ps -f "ancestor=$(HUB_IMAGE_NAME)" -q --all` >/dev/null 2>&1
+	echo "FIX THIS: @docker volume rm `docker volume ls -q`"
 
 down:
 	-docker-compose down
@@ -59,11 +115,11 @@ down:
 up:
 	@docker-compose up -d
 
-follow:
-	@docker logs $(LOCAL_NOTEBOOK_IMAGE) --follow
+follow-hub:
+	@docker logs $(LAB_IMAGE_NAME) --follow
 
-follow_lab:
-	@docker logs `docker ps -f "ancestor=$(LOCAL_NOTEBOOK_IMAGE)" -q --all | head -1` --follow
+follow-lab:
+	@docker logs `docker ps -f "ancestor=$(LAB_IMAGE_NAME)" -q --all | head -1` --follow
 
 restart: down up follow
 
@@ -72,5 +128,8 @@ nuke:
 	-docker rm -fv `docker ps --all -q`
 	-docker images -q --filter "dangling=true" | xargs docker rmi
 
-
-.PHONY: bash clear_volumes clean down up follow build restart pull nuke network userlist
+.PHONY: bash-hub bash-lab follow-hub follow-lab
+.PHONY: clear-user-volumes clean
+.PHONY: down up build restart network userlist host-volume
+.PHONY: lab-image hub-image
+.PHONY: nuke
