@@ -54,14 +54,11 @@ ARG PYPI_PACKAGE_VERSION
 
 RUN pip install --quiet ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION}
 
-RUN \
-    python -m nltk.downloader -d /usr/local/share/nltk_data stopwords punkt sentiwordnet \
-    \
-    && pip install --quiet spacy-lookups-data \
-    && python -m spacy download en_core_web_sm \
-    && python -m spacy download en_core_web_md \
-    && python -m spacy link en_core_web_sm en --force \
-    && mkdir -p /data
+COPY scripts/install-data.sh /tmp/install-data.sh
+
+RUN mkdir -p /data \
+    && chmod +x /tmp/install-data.sh \
+    && /tmp/install-data.sh
 
 RUN jupyter labextension install \
         ipyaggrid \
@@ -94,13 +91,13 @@ RUN mkdir -p $HOME/work
 
 WORKDIR $HOME/work
 
-COPY --chown=$LAB_USER:users update.sh $HOME/work/update.sh
+COPY --chown=$LAB_USER:users scripts $HOME/work/scripts
 COPY --chown=$LAB_USER:users data $HOME/work/data
 
 ARG GITHUB_REPOSITORY_URL
 
-RUN chmod +x $HOME/work/update.sh \
-    && $HOME/work/update.sh -r ${GITHUB_REPOSITORY_URL} notebooks resources __paths__.py
+RUN chmod +x $HOME/work/scripts/*.sh \
+    && $HOME/work/scripts/update-notebooks.sh -r ${GITHUB_REPOSITORY_URL} notebooks resources __paths__.py
 
 CMD ["jupyterhub-singleuser"]
 # CMD jupyter lab --ip=* --port=${LAB_PORT} --no-browser --allow-root
