@@ -5,6 +5,9 @@ include .env
 
 .DEFAULT_GOAL=build
 
+SPACY_DATA=/data/lib/spacy_data
+NLTK_DATA=/data/lib/nltk_data
+
 build: check-files network host-volume lab-image hub-image
 	@sudo addgroup --gid $(LAB_GID) "$(PROJECT_NAME)s"
 	@sudo adduser $(PROJECT_NAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
@@ -25,6 +28,10 @@ network:
 
 host-volume:
 	@docker volume inspect $(HUB_HOST_VOLUME_NAME) >/dev/null 2>&1 || docker volume create --name $(HUB_HOST_VOLUME_NAME)
+
+data:
+	@sudo ./scripts/download-spacy-data.sh
+	@sudo ./scripts/download-nltk-data.sh
 
 secrets/.env.oauth2:
 	@echo "File .env.oauth2 file is missing (GitHub parameters)"
@@ -128,7 +135,7 @@ nuke:
 	-docker rm -fv `docker ps --all -q`
 	-docker images -q --filter "dangling=true" | xargs docker rmi
 
-.PHONY: bash-hub bash-lab follow-hub follow-lab
+.PHONY: bash-run-hub bash-run-lab bash-exec-hub bash-exec-lab follow-hub follow-lab
 .PHONY: clear-user-volumes clean
 .PHONY: down up build restart network userlist host-volume
 .PHONY: lab-image hub-image
