@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     libmemcached-dev \
     libsqlite3-dev \
     libzmq3-dev \
-    # make node-gyp \
     pandoc \
     sqlite3 \
     zlib1g-dev \
@@ -17,7 +16,6 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
 RUN pip install --upgrade pip \
     && pip install --quiet \
         jupyterhub-idle-culler \
-        # psycopg2-binary \
         dockerspawner \
         oauthenticator
 
