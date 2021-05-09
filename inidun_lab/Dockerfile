@@ -34,62 +34,63 @@ RUN set -ex; \
     && npm install n -g \
     && n stable
 
-RUN python3.8 -m venv /venv
-
-ENV PATH="/venv/bin:/usr/local/bin:$PATH"
-RUN echo "export PATH=${PATH}" >> /root/.bashrc
-
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/local/bin/tini
-
 RUN chmod +x /usr/local/bin/tini
 
-ARG JUPYTERHUB_VERSION
-
-RUN python --version \
-    && pip install --quiet --upgrade pip \
-    && pip install --quiet jupyterhub==${JUPYTERHUB_VERSION}
-
-ARG PYPI_PACKAGE
-ARG PYPI_PACKAGE_VERSION
-
-RUN pip install --quiet ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION}
-
-COPY scripts/install-data.sh /tmp/install-data.sh
-
-RUN mkdir -p /data \
-    && chmod +x /tmp/install-data.sh \
-    && /tmp/install-data.sh
-
-RUN jupyter labextension install \
-        ipyaggrid \
-        @finos/perspective-jupyterlab \
-        @jupyter-widgets/jupyterlab-manager
-
-ENV NLTK_DATA=/usr/local/share/nltk_data
-
 ENTRYPOINT ["tini", "-g", "--"]
-
 
 ARG LAB_UID="201"
 ARG LAB_GID="2001"
 ARG LAB_USER="jovyan"
 
-RUN addgroup --gid $LAB_GID "${LAB_USER}s"  \
-    && adduser $LAB_USER --uid $LAB_UID --gid $LAB_GID --disabled-password --gecos '' --shell /bin/bash \
-    && adduser $LAB_USER sudo \
-    && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+RUN  addgroup --gid $LAB_GID "${LAB_USER}s"  \
+  && adduser $LAB_USER --uid $LAB_UID --gid $LAB_GID --disabled-password --gecos '' --shell /bin/bash \
+  && adduser $LAB_USER sudo \
+  && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-RUN  npm cache clean --force \
+ARG NLTK_DATA=/data/lib/nltk_data
+ARG SPACY_DATA=/data/lib/spacy_data/2.3.1
+ENV NLTK_DATA=${NLTK_DATA}
+ENV SPACY_DATA=${SPACY_DATA}
+
+# COPY scripts/install-data.sh /tmp/install-data.sh
+# RUN if [ "$SPACY_DATA" == "" ] ; then \
+#         chmod +x /tmp/install-data.sh && /tmp/install-data.sh ; \
+#     fi
+
+RUN python3.8 -m venv /venv
+ENV PATH="/venv/bin:/usr/local/bin:$PATH"
+RUN echo "export PATH=${PATH}" >> /root/.bashrc
+
+ARG JUPYTERHUB_VERSION
+
+RUN python --version \
+    && pip install --quiet --upgrade pip \
+    && pip install --quiet jupyterhub==${JUPYTERHUB_VERSION} \
+    \
+    && mkdir -p /data
+
+ARG PYPI_PACKAGE
+ARG PYPI_PACKAGE_VERSION
+
+RUN pip install --quiet ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION} \
+    \
+    && jupyter labextension install \
+        ipyaggrid \
+        @finos/perspective-jupyterlab \
+        @jupyter-widgets/jupyterlab-manager \
+    \
+    && npm cache clean --force \
     && jupyter lab clean \
     && pip cache purge
 
-ENV HOME=/home/$LAB_USER
+# RUN chown --quiet --recursive ${LAB_UID}.${LAB_GID} /venv
+
 USER $LAB_USER
-WORKDIR $HOME
+
+ENV HOME=/home/$LAB_USER
 
 RUN mkdir -p $HOME/work
-
-WORKDIR $HOME/work
 
 COPY --chown=$LAB_USER:users scripts $HOME/work/scripts
 COPY --chown=$LAB_USER:users data $HOME/work/data
@@ -100,4 +101,5 @@ RUN chmod +x $HOME/work/scripts/*.sh \
     && $HOME/work/scripts/update-notebooks.sh -r ${GITHUB_REPOSITORY_URL} notebooks resources __paths__.py
 
 CMD ["jupyterhub-singleuser"]
+
 # CMD jupyter lab --ip=* --port=${LAB_PORT} --no-browser --allow-root
