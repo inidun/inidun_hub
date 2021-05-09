@@ -32,7 +32,7 @@ function download_model {
     rm -rf ${model} ${model}-${version}
     wget -q -O ${tarball} ${url}
     tar xf ${tarball}
-    ln -s ./${model}-${version}/${model}-${version} ${model}
+    mv ./${model}-${version} ${model}
     rm -rf ${tarball}
 
     echo "info: ${model}-${version} downloaded"
