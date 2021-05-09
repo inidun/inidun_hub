@@ -100,6 +100,8 @@ ARG GITHUB_REPOSITORY_URL
 RUN chmod +x $HOME/work/scripts/*.sh \
     && $HOME/work/scripts/update-notebooks.sh -r ${GITHUB_REPOSITORY_URL} notebooks resources __paths__.py
 
+WORKDIR ${HOME}
+
 CMD ["jupyterhub-singleuser"]
 
 # CMD jupyter lab --ip=* --port=${LAB_PORT} --no-browser --allow-root
