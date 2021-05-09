@@ -3,15 +3,21 @@
 
 include .env
 
+SHELL = /bin/bash
+
 .DEFAULT_GOAL=build
 
 SPACY_DATA=/data/lib/spacy_data
 NLTK_DATA=/data/lib/nltk_data
 
-build: check-files network host-volume lab-image hub-image
-	@sudo addgroup --gid $(LAB_GID) "$(PROJECT_NAME)s"
-	@sudo adduser $(PROJECT_NAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
+HOST_USERNAME=$(PROJECT_NAME)
+
+build: check-files network host-volume lab-image hub-image host-user
 	@echo "Build done"
+
+host-user:
+	@getent group $(HOST_USERNAME) &> /dev/null || echo addgroup --gid $(LAB_GID) $(HOST_USERNAME) &>/dev/null
+	@id -u $(HOST_USERNAME) &> /dev/null || sudo adduser $(HOST_USERNAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
 
 rebuild: down clear-user-volumes build jupyterhub-config up
 	@echo "Rebuild done"
@@ -29,9 +35,16 @@ network:
 host-volume:
 	@docker volume inspect $(HUB_HOST_VOLUME_NAME) >/dev/null 2>&1 || docker volume create --name $(HUB_HOST_VOLUME_NAME)
 
+.ONESHELL: data
+.PHONY: data
 data:
-	@sudo ./scripts/download-spacy-data.sh
-	@sudo ./scripts/download-nltk-data.sh
+	@if [ ! -d /data/lib/spacy_data ] ; then \
+		sudo ./scripts/download-spacy-data.sh ;
+	fi ; \
+	if [ ! -d /data/lib/nltk_data ] ; then \
+		sudo ./scripts/download-nltk-data.sh ;
+	fi ; \
+	sudo mkdir -p /data/$(PROJECT_NAME)
 
 secrets/.env.oauth2:
 	@echo "File .env.oauth2 file is missing (GitHub parameters)"
