@@ -148,8 +148,21 @@ nuke:
 	-docker rm -fv `docker ps --all -q`
 	-docker images -q --filter "dangling=true" | xargs docker rmi
 
+tag: guard_clean_working_repository
+	@git tag $(PYPI_PACKAGE_VERSION) -a
+	@git push origin --tags
+
+.ONESHELL: guard_clean_working_repository
+guard_clean_working_repository:
+	@status="$$(git status --porcelain)"
+	@if [ "$$status" != "" ]; then
+		echo "error: changes exists, please commit or stash them: "
+		echo "$$status"
+		exit 65
+	fi
+
 .PHONY: bash-run-hub bash-run-lab bash-exec-hub bash-exec-lab follow-hub follow-lab
 .PHONY: clear-user-volumes clean
 .PHONY: down up build restart network userlist host-volume
 .PHONY: lab-image hub-image
-.PHONY: nuke
+.PHONY: nuke tag guard_clean_working_repository
