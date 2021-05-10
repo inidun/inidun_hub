@@ -8,6 +8,7 @@ c = get_config()
 
 network_name = os.environ['HUB_NETWORK_NAME']
 spawn_cmd = os.environ.get('DOCKER_SPAWN_CMD', "start-singleuser.sh")
+notebook_dir = os.environ.get('LAB_NOTEBOOK_DIR') or '/home/jovyan'
 config_dir = os.environ.get('HUB_CONFIG_FOLDER', '/etc/jupyterhub')
 project_name =os.environ.get('PROJECT_NAME', 'public')
 data_dir = os.environ.get('HUB_HOST_VOLUME_FOLDER', '/data')
@@ -47,7 +48,7 @@ c.JupyterHub.admin_access = True
 c.JupyterHub.hub_ip = '0.0.0.0'
 c.JupyterHub.hub_connect_ip = os.environ['HUB_IP']
 c.JupyterHub.authenticator_class = oauthenticator.github.GitHubOAuthenticator
-c.JupyterHub.cookie_secret_file = '/srv/jupyterhub/jupyterhub_cookie_secret'
+c.JupyterHub.cookie_secret_file = os.path.join(project_data_dir, 'jupyterhub_cookie_secret')
 
 c.GitHubOAuthenticator.oauth_callback_url = os.environ['OAUTH_CALLBACK_URL']
 c.GitHubOAuthenticator.client_id = os.environ['OAUTH_CLIENT_ID']
@@ -84,7 +85,6 @@ c.DockerSpawner.name_template = "jupyterhub-" + project_name + "-{username}"
 c.Spawner.default_url = '/lab'
 c.Spawner.mem_limit = '3G'
 c.Spawner.notebook_dir = notebook_dir
-c.Spawner.cmd = ['jupyterhub-singleuser', '--debug']
 
 if not isinstance(c.DockerSpawner.environment, dict):
     c.DockerSpawner.environment = dict()
@@ -94,6 +94,8 @@ c.DockerSpawner.environment.update({
     'SPACY_DATA': os.environ.get('SPACY_DATA', ''),
     'SPACY_PATH': os.environ.get('SPACY_DATA', ''),
 })
+
+c.Spawner.cmd = ['jupyterhub-singleuser', '--debug']
 
 # Debug settings
 c.JupyterHub.debug_proxy = True
