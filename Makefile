@@ -15,6 +15,10 @@ HOST_USERNAME=$(PROJECT_NAME)
 build: backup-config check-files network host-volume host-user lab-image hub-image backup-hub-folder
 	@echo "Build done"
 
+git-tag:
+	@git tag v$(PYPI_PACKAGE_VERSION)
+	@git push origin v$(PYPI_PACKAGE_VERSION)
+
 backup-hub-folder:
 	@mkdir -p ../$(PROJECT_NAME).version.backups
 	@tar czvf ../$(PROJECT_NAME).version.backups/$(PROJECT_NAME).$(PYPI_PACKAGE_VERSION).tar.gz --exclude-vcs --exclude=.pytest_cache --exclude=deprecated .
