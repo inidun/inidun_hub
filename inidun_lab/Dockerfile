@@ -97,6 +97,9 @@ COPY --chown=$LAB_USER:users scripts $HOME/work/scripts
 COPY --chown=$LAB_USER:users data $HOME/work/data
 
 ARG GITHUB_REPOSITORY_URL
+ARG GITHUB_REPOSITORY_INFO_URL
+
+ADD  ${GITHUB_REPOSITORY_INFO_URL} /tmp/repo.info
 
 RUN chmod +x $HOME/work/scripts/*.sh \
     && $HOME/work/scripts/update-notebooks.sh -r ${GITHUB_REPOSITORY_URL} notebooks resources __paths__.py
