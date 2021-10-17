@@ -8,7 +8,8 @@ DOWNLOAD_URL=https://github.com/explosion/spacy-models/releases/download
 
 SPACY_DATA=${SPACY_DATA:-/data/lib/spacy_data}
 
-declare -a VERSIONS=("2.3.1" "3.0.0")
+# declare -a VERSIONS=("2.3.1" "3.0.0")
+declare -a VERSIONS=("3.1.0")
 declare -a MODELS=("en_core_web_sm" "en_core_web_md")
 
 # declare -a LANGUAGES=("en")
