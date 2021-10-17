@@ -73,7 +73,8 @@ RUN python --version \
 ARG PYPI_PACKAGE
 ARG PYPI_PACKAGE_VERSION
 
-RUN pip install --quiet ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION} \
+RUN pip install --quiet --upgrade pip \
+    && pip install --quiet ${PYPI_PACKAGE}==${PYPI_PACKAGE_VERSION} \
     \
     && jupyter labextension install \
         ipyaggrid \

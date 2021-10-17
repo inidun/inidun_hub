@@ -12,8 +12,12 @@ NLTK_DATA=/data/lib/nltk_data
 
 HOST_USERNAME=$(PROJECT_NAME)
 
-build: check-files network host-volume lab-image hub-image host-user
+build: backup-config check-files network host-volume host-user lab-image hub-image backup-hub-folder
 	@echo "Build done"
+
+backup-hub-folder:
+	@mkdir -p ../$(PROJECT_NAME).version.backups
+	@tar czvf ../$(PROJECT_NAME).version.backups/$(PROJECT_NAME).$(PYPI_PACKAGE_VERSION).tar.gz --exclude-vcs --exclude=.pytest_cache --exclude=deprecated .
 
 host-user:
 	@getent group $(HOST_USERNAME) &> /dev/null || echo addgroup --gid $(LAB_GID) $(HOST_USERNAME) &>/dev/null
@@ -124,6 +128,19 @@ backup-user-volumes:
 	@sudo find /var/lib/docker/volumes -maxdepth 1 -mindepth 1 -name "*$(PROJECT_NAME)*" -not -type l -print | \
 		sudo tar -czvf ~/backup/docker-volumes/$(USER_VOLUMES_BACKUP_NAME) --files-from=- >/dev/null 2>&1
 
+
+CONFIG_BACKUP_FILENAME="config_$(PROJECT_NAME)_$(PYPI_PACKAGE_VERSION)."`date '+%Y%m%d-%H%M'`.tar.gz
+backup-config:
+	@mkdir -p ~/backup/$(PROJECT_NAME)
+	@tar czf ~/backup/$(PROJECT_NAME)/$(CONFIG_BACKUP_FILENAME) \
+		--exclude=deprecated \
+		--exclude=.gitignore \
+		--exclude=.pytest_cache \
+		--exclude=.git \
+		--exclude=README.md \
+		--exclude=LICENSE \
+		--exclude=.env.template .
+
 clean: down
 	-docker rm `docker ps -f "ancestor=$(LAB_IMAGE_NAME)" -q --all` >/dev/null 2>&1
 	-docker rm `docker ps -f "ancestor=$(HUB_IMAGE_NAME)" -q --all` >/dev/null 2>&1
@@ -136,12 +153,12 @@ up:
 	@docker-compose up -d
 
 follow-hub:
-	@docker logs $(LAB_IMAGE_NAME) --follow
+	@docker logs $(HUB_IMAGE_NAME) --follow
 
 follow-lab:
 	@docker logs `docker ps -f "ancestor=$(LAB_IMAGE_NAME)" -q --all | head -1` --follow
 
-restart: down up follow
+restart: down up follow-hub
 
 nuke:
 	-docker stop `docker ps --all -q`

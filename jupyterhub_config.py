@@ -48,7 +48,9 @@ c.JupyterHub.admin_access = True
 c.JupyterHub.hub_ip = '0.0.0.0'
 c.JupyterHub.hub_connect_ip = os.environ['HUB_IP']
 c.JupyterHub.authenticator_class = oauthenticator.github.GitHubOAuthenticator
-c.JupyterHub.cookie_secret_file = os.path.join(project_data_dir, 'jupyterhub_cookie_secret')
+#c.JupyterHub.cookie_secret_file = os.path.join(project_data_dir, 'jupyterhub_cookie_secret')
+
+c.JupyterHub.cookie_secret_file = '/tmp/jupyterhub_cookie_secret'
 
 c.GitHubOAuthenticator.oauth_callback_url = os.environ['OAUTH_CALLBACK_URL']
 c.GitHubOAuthenticator.client_id = os.environ['OAUTH_CLIENT_ID']
