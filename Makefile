@@ -7,10 +7,42 @@ SHELL = /bin/bash
 
 .DEFAULT_GOAL=build
 
-SPACY_DATA=/data/lib/spacy_data
 NLTK_DATA=/data/lib/nltk_data
 
 HOST_USERNAME=$(PROJECT_NAME)
+
+
+ENVIRONMENT_VARIABLES := \
+	GITHUB_ACCESS_TOKEN \
+	HUB_IP \
+	SPACY_PATH \
+	OAUTH_CALLBACK_URL \
+	OAUTH_CLIENT_ID \
+	OAUTH_CLIENT_SECRET \
+	TINI_VERSION \
+	DOCKER_SPAWN_CMD \
+	LAB_NOTEBOOK_DIR
+
+show-build-args:
+	@echo GITHUB_REPOSITORY_BRANCH=$(GITHUB_REPOSITORY_BRANCH)
+	@echo GITHUB_REPOSITORY_INFO_URL=$(GITHUB_REPOSITORY_INFO_URL)
+	@echo GITHUB_REPOSITORY_URL=$(GITHUB_REPOSITORY_URL)
+	@echo HOST_USERNAME=$(HOST_USERNAME)
+	@echo HUB_CONFIG_FOLDER=$(HUB_CONFIG_FOLDER)
+	@echo HUB_HOST_CONFIG_FOLDER=$(HUB_HOST_CONFIG_FOLDER)
+	@echo HUB_HOST_VOLUME_FOLDER=$(HUB_HOST_VOLUME_FOLDER)
+	@echo HUB_HOST_VOLUME_NAME=$(HUB_HOST_VOLUME_NAME)
+	@echo HUB_IMAGE_NAME=$(HUB_IMAGE_NAME)
+	@echo HUB_NETWORK_NAME=$(HUB_NETWORK_NAME)
+	@echo JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION)
+	@echo LAB_GID=$(LAB_GID)
+	@echo LAB_IMAGE_NAME=$(LAB_IMAGE_NAME)
+	@echo LAB_UID=$(LAB_UID)
+	@echo NLTK_DATA=$(NLTK_DATA)
+	@echo PROJECT_NAME=$(PROJECT_NAME)
+	@echo PYPI_PACKAGE_VERSION=$(PYPI_PACKAGE_VERSION)
+	@echo PYPI_PACKAGE=$(PYPI_PACKAGE)
+	@echo SPACY_DATA=$(SPACY_DATA)
 
 build: backup-config check-files network host-volume host-user lab-image hub-image backup-hub-folder
 	@echo "Build done"
@@ -24,8 +56,8 @@ backup-hub-folder:
 	@tar czvf ../$(PROJECT_NAME).version.backups/$(PROJECT_NAME).$(PYPI_PACKAGE_VERSION).tar.gz --exclude-vcs --exclude=.pytest_cache --exclude=deprecated .
 
 host-user:
-	@getent group $(HOST_USERNAME) &> /dev/null || echo addgroup --gid $(LAB_GID) $(HOST_USERNAME) &>/dev/null
-	@id -u $(HOST_USERNAME) &> /dev/null || sudo adduser $(HOST_USERNAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
+	@-getent group $(HOST_USERNAME) &> /dev/null || echo addgroup --gid $(LAB_GID) $(HOST_USERNAME) &>/dev/null
+	@-id -u $(HOST_USERNAME) &> /dev/null || sudo adduser $(HOST_USERNAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
 
 rebuild: down clear-user-volumes build jupyterhub-config up
 	@echo "Rebuild done"
@@ -75,6 +107,7 @@ lab-image:
 	docker build \
 		--build-arg PYPI_PACKAGE=$(PYPI_PACKAGE) \
 		--build-arg PYPI_PACKAGE_VERSION=$(PYPI_PACKAGE_VERSION) \
+		--build-arg GITHUB_REPOSITORY_BRANCH=$(GITHUB_REPOSITORY_BRANCH) \
 		--build-arg GITHUB_REPOSITORY_URL=$(GITHUB_REPOSITORY_URL) \
 		--build-arg GITHUB_REPOSITORY_INFO_URL=$(GITHUB_REPOSITORY_INFO_URL) \
 		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
@@ -89,6 +122,7 @@ hub-image:
 	@echo "Building hub image"
 	docker build \
 		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
+		--build-arg CONFIGPROXY_AUTH_TOKEN=$(CONFIGPROXY_AUTH_TOKEN) \
 		-t $(HUB_IMAGE_NAME):latest \
 		-t $(HUB_IMAGE_NAME):$(PYPI_PACKAGE_VERSION) \
 		-f ./Dockerfile .
@@ -100,6 +134,7 @@ run-lab-image:
 		--build-arg PYPI_PACKAGE_VERSION=$(PYPI_PACKAGE_VERSION) \
 		--build-arg GITHUB_REPOSITORY_URL=$(GITHUB_REPOSITORY_URL) \
 		--build-arg GITHUB_REPOSITORY_INFO_URL=$(GITHUB_REPOSITORY_INFO_URL) \
+		--build-arg GITHUB_REPOSITORY_BRANCH=$(GITHUB_REPOSITORY_BRANCH) \
 		--build-arg SPACY_DATA=$(SPACY_DATA) \
 		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
 		--build-arg LAB_PORT=8889 \
