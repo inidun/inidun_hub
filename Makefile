@@ -59,7 +59,7 @@ host-user:
 	@-getent group $(HOST_USERNAME) &> /dev/null || echo addgroup --gid $(LAB_GID) $(HOST_USERNAME) &>/dev/null
 	@-id -u $(HOST_USERNAME) &> /dev/null || sudo adduser $(HOST_USERNAME) --uid $(LAB_UID) --gid $(LAB_GID) --no-create-home --disabled-password --gecos '' --shell /bin/bash
 
-rebuild: down clear-user-volumes build jupyterhub-config up
+rebuild: down clear-user-volumes build jupyterhub-config git-tag up
 	@echo "Rebuild done"
 	@exit 0
 
