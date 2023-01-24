@@ -3,6 +3,7 @@
 import os
 import sys
 import oauthenticator
+from nativeauthenticator import NativeAuthenticator
 
 c = get_config()
 
@@ -10,7 +11,7 @@ network_name = os.environ['HUB_NETWORK_NAME']
 spawn_cmd = os.environ.get('DOCKER_SPAWN_CMD', "start-singleuser.sh")
 notebook_dir = os.environ.get('LAB_NOTEBOOK_DIR') or '/home/jovyan'
 config_dir = os.environ.get('HUB_CONFIG_FOLDER', '/etc/jupyterhub')
-project_name =os.environ.get('PROJECT_NAME', 'public')
+project_name = os.environ.get('PROJECT_NAME', 'public')
 data_dir = os.environ.get('HUB_HOST_VOLUME_FOLDER', '/data')
 
 notebook_dir ='/home/jovyan/work'
@@ -47,14 +48,36 @@ c.JupyterHub.spawner_class = 'dockerspawner.DockerSpawner'
 c.JupyterHub.admin_access = True
 c.JupyterHub.hub_ip = '0.0.0.0'
 c.JupyterHub.hub_connect_ip = os.environ['HUB_IP']
-c.JupyterHub.authenticator_class = oauthenticator.github.GitHubOAuthenticator
-#c.JupyterHub.cookie_secret_file = os.path.join(project_data_dir, 'jupyterhub_cookie_secret')
 
 c.JupyterHub.cookie_secret_file = '/tmp/jupyterhub_cookie_secret'
+c.JupyterHub.db_url = f'sqlite:///{config_dir}/jupyterhub.sqlite'
 
-c.GitHubOAuthenticator.oauth_callback_url = os.environ['OAUTH_CALLBACK_URL']
-c.GitHubOAuthenticator.client_id = os.environ['OAUTH_CLIENT_ID']
-c.GitHubOAuthenticator.client_secret = os.environ['OAUTH_CLIENT_SECRET']
+USE_NATIVE_AUTHENTICATOR = True
+
+if USE_NATIVE_AUTHENTICATOR:
+
+    import warnings
+    c.JupyterHub.authenticator_class = 'nativeauthenticator.NativeAuthenticator'
+    c.NativeAuthenticator.enable_auth_state = True
+
+    if 'JUPYTERHUB_CRYPT_KEY' not in os.environ:
+        warnings.warn(
+            "Need JUPYTERHUB_CRYPT_KEY env for persistent auth_state.\n"
+            "    export JUPYTERHUB_CRYPT_KEY=$(openssl rand -hex 32)"
+        )
+        c.CryptKeeper.keys = [ os.urandom(32) ]
+
+
+    c.NativeAuthenticator.check_common_password = True
+    c.NativeAuthenticator.minimum_password_length = 8
+    c.NativeAuthenticator.allowed_failed_logins = 3
+    c.NativeAuthenticator.enable_signup = True
+
+else:
+    c.JupyterHub.authenticator_class = oauthenticator.github.GitHubOAuthenticator
+    c.GitHubOAuthenticator.oauth_callback_url = os.environ['OAUTH_CALLBACK_URL']
+    c.GitHubOAuthenticator.client_id = os.environ['OAUTH_CLIENT_ID']
+    c.GitHubOAuthenticator.client_secret = os.environ['OAUTH_CLIENT_SECRET']
 
 c.Authenticator.allowed_users, c.Authenticator.admin_users = read_userlist()
 c.Authenticator.auto_login = False
@@ -85,7 +108,7 @@ c.DockerSpawner.host_ip = "0.0.0.0"
 c.DockerSpawner.name_template = "jupyterhub-" + project_name + "-{username}"
 
 c.Spawner.default_url = '/lab'
-c.Spawner.mem_limit = '3G'
+c.Spawner.mem_limit = '6G'
 c.Spawner.notebook_dir = notebook_dir
 
 if not isinstance(c.DockerSpawner.environment, dict):
