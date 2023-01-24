@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-GIT_REPOSITORY_URL=
-PROJECT_NAME=
-INSTALL_ITEMS=("notebooks" "resources" "__paths__.py")
-TARGET_FOLDER=${HOME}/work
+repository_url=
+repository_branch=
+project_name=inidun
+install_items=("notebooks" "resources" "__paths__.py")
+target_folder=${HOME}/work
 
-mkdir -p $TARGET_FOLDER
+mkdir -p $target_folder
 
 main() {
     parse_opts $@
@@ -14,10 +15,10 @@ main() {
 
 run() {
 
-    echo "Updating ${GIT_REPOSITORY_URL}..."
+    echo "Updating ${repository_url}..."
 
-    rm -rf /tmp/${PROJECT_NAME}
-    rm -rf "${TARGET_FOLDER}/${PROJECT_NAME}"
+    rm -rf /tmp/${project_name}
+    rm -rf "${target_folder}/${project_name}"
 
     # rm -rf !("notebooks"|"repository")
     # shopt -s extglob
@@ -26,20 +27,20 @@ run() {
 
     cd /tmp
 
-    git clone ${GIT_REPOSITORY_URL}
+    git clone --branch ${repository_branch} ${repository_url}
 
-    echo "Installing: $INSTALL_ITEMS"
-    for item in ${INSTALL_ITEMS[@]} ; do
-        if [ -e "${TARGET_FOLDER}/${PROJECT_NAME}/${item}" ] ; then
-            rm -rf ${TARGET_FOLDER}/${PROJECT_NAME}/${item}
+    echo "Installing: $install_items"
+    for item in ${install_items[@]} ; do
+        if [ -e "${target_folder}/${project_name}/${item}" ] ; then
+            rm -rf ${target_folder}/${project_name}/${item}
         fi
-        mv /tmp/${PROJECT_NAME}/${item} ${TARGET_FOLDER}/${PROJECT_NAME}/
+        mv /tmp/${project_name}/${item} ${target_folder}/${project_name}/
     done
 
     popd
 
-    if [ ! -L "${TARGET_FOLDER}/${PROJECT_NAME}/data" ] ; then
-        ln -s "${TARGET_FOLDER}/data" "${TARGET_FOLDER}/${PROJECT_NAME}/data"
+    if [ ! -L "${target_folder}/${project_name}/data" ] ; then
+        ln -s "${target_folder}/data" "${target_folder}/${project_name}/data"
     fi
 
 }
@@ -53,8 +54,8 @@ Script description here.
 Available options:
 
 -h, --help            Print this help and exit
--f, --flag            Some flag description
 -r, --repository-url  URL to repository
+-b, --branch          Specify repository branch
 EOF
   exit
 }
@@ -64,11 +65,14 @@ parse_opts() {
     while :; do
         case "${1-}" in
         -h | --help) usage ;;
-        # -f | --flag) flag=1 ;; # example flag
         -r | --repository-url) # example named parameter
-            GIT_REPOSITORY_URL="${2-}" ;
-            PROJECT_NAME=`basename "${GIT_REPOSITORY_URL}"` ;
-            PROJECT_NAME="${PROJECT_NAME%.*}" ;
+            repository_url="${2-}" ;
+            project_name=`basename "${repository_url}"` ;
+            project_name="${project_name%.*}" ;
+            shift
+            ;;
+        -b | --branch) # branch
+            repository_branch="${2-}" ;
             shift
             ;;
         -?*) die "Unknown option: $1" ;;
@@ -77,11 +81,12 @@ parse_opts() {
         shift
     done
 
-    INSTALL_ITEMS=($*)
+    install_items=($*)
 
-    [[ -z "${GIT_REPOSITORY_URL}" ]] && usage
-    [[ -z "${PROJECT_NAME}" ]] && usage
-    [[ ${#INSTALL_ITEMS[@]} -eq 0 ]] && usage
+    [[ -z "${repository_branch}" ]] && usage
+    [[ -z "${repository_url}" ]] && usage
+    [[ -z "${project_name}" ]] && usage
+    [[ ${#install_items[@]} -eq 0 ]] && usage
 
     return 0
 }
