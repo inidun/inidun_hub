@@ -7,7 +7,7 @@ services:
     ports:
       - "3004:8000"
     container_name: ${HUB_IMAGE_NAME}
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
       - "inidun_hub_data:${HUB_HOST_VOLUME_FOLDER}"
