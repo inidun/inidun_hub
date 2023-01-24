@@ -17,7 +17,11 @@ RUN pip install --upgrade pip \
     && pip install --quiet \
         jupyterhub-idle-culler \
         dockerspawner \
-        oauthenticator
+        oauthenticator \
+        jupyterhub-nativeauthenticator
+
+ARG CONFIGPROXY_AUTH_TOKEN
+ENV CONFIGPROXY_AUTH_TOKEN=${CONFIGPROXY_AUTH_TOKEN}
 
 WORKDIR /srv
 
